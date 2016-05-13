@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link rel="icon" href="../../favicon.ico">
+
+    <title>Template chat</title>
+
+    <!-- Bootstrap core CSS -->
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Custom styles for this template -->
+    <link href="template-chat.css" rel="stylesheet">
+  </head>
+
+  <body>
+
+    <div class="container">
+
+      <div class="starter-template">
+        <h1>Template chat</h1>
+        <p class="lead">HTML template for web chat application.</p>
+      </div>
+
+      <div class="chat">
+        <div class="messages"></div>
+        <div class="addMessage">
+          <div class="chatInput" contenteditable="true" placeholder="Entrer un message ici"></div>
+          <button id="btnSend" class="btn btn-default" type="button"><span class="glyphicon glyphicon-send" aria-hidden="true"></span></button>
+        </div>
+      </div>
+
+    </div><!-- /.container -->
+
+
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.13.0/moment.min.js"></script>
+    
+<script type="text/javascript">
+
+
+/**
+ *
+ * Chat class
+ *
+ */
+
+function chat(container,jsonMessages,jsonUsers)
+{
+  this.messages = []
+  this.users = {}
+  this.$container = $(container)
+  this.$messages = $('.messages');
+  this.$input = $('.chatInput');
+  this.$btnSend = $('#btnSend');
+  this.lastHeight = this.$input.height();
+  this.totalHeight = this.$container.height();
+  this.jsonMessages = jsonMessages
+  this.jsonUsers = jsonUsers
+  this.user_id = 1
+  this.init()
+}
+
+chat.prototype = {
+
+  mapMessages: function()
+  {
+    var self = this
+    this.jsonMessages.map(function(data,key){        
+        data.me = false
+        data.user = self.users[data.user_id]
+        if(data.user_id == self.user_id){
+          data.me = true
+        }
+        self.messages.push(new message(data))
+    })
+  },
+
+  mapUsers : function(){
+    var self = this
+    this.jsonUsers.map(function(data,key){
+        var u = new user(data)
+        self.users[u.id] = u
+    })
+  },
+
+  sendMessage: function()
+  {
+    var txt = this.$input.html().replace(/<div>/g, "").replace(/<\/div>/g, "<br>");
+    if(txt!=""){
+      var data = {
+        "user_id" : this.user_id,
+        "dateTime" : moment(),
+        "txt" : txt,
+        "me" : 1
+      }
+      var newMessage = new message(data)
+      this.messages.push(newMessage)
+      this.$messages.append(newMessage.display())
+      this.$input.text("")
+      this.checkForChanges()
+      this.displayLastMessage()
+    }
+  },
+
+  checkForChanges: function()
+  {
+    if (this.$input.height() != this.lastHeight)
+    {
+        this.lastHeight = this.$input.height(); 
+        var oldMessagesHeight = this.$messages.height()
+        var newMessagesHeight = this.totalHeight-this.lastHeight
+        this.$container.css("padding-bottom" , (this.lastHeight + 15) + "px")
+        this.$messages.scrollTop(this.$messages.scrollTop()- newMessagesHeight +10 + oldMessagesHeight)
+    }
+  },
+
+  displayLastMessage : function()
+  {
+    this.$messages.scrollTop(this.$messages.prop("scrollHeight"));
+  },
+
+  displayMessages: function()
+  {
+    var html = ""
+    this.messages.map(function(m,key){
+      html += m.display()
+    })
+    this.$messages.html(html)
+  },
+
+  init : function()
+  {
+    var self = this
+
+    this.mapUsers()
+    this.mapMessages()
+    this.displayMessages()
+    this.displayLastMessage()
+
+    // afficher le chat quand le scroll est fini
+    this.$container.css("visibility","visible")
+
+    // Saisie d'une valeur
+    this.$input.keyup(function(e){
+      self.checkForChanges()
+    });
+
+    this.$input.keydown(function(e){
+      delay(function(e){self.checkForChanges()},10)
+    });
+    
+    // Envoy dun message
+    this.$btnSend.click(function(e){
+      self.sendMessage()
+    });
+
+    // Gestion de la touche entrer
+    this.$input.keypress(function(e){
+      if(e.which == 13 && !event.shiftKey ) {
+          self.sendMessage();
+          e.preventDefault();
+      }
+    });
+  }
+}
+
+
+/**
+ *
+ * Message class
+ *
+ */
+
+function message(data)
+{
+  this.txt = data.txt
+  this.moment = moment(data.dateTime,"YYYY-MM-DD HH:mm:ss")
+  this.user = data.user
+  this.me = data.me
+  console.log(data.user)
+}
+
+message.prototype = {
+
+  display: function()
+  {
+    var html = ''
+    if(this.me){
+      html += '<div class="me">'
+    }else{
+      html += '<div class="other">'
+      html += this.user.getAvatar(32)
+    }
+    html += '  <div class="messageTime">' + this.getTime() + '</div>'
+    html += '  <div class="message">'
+    if(!this.me){
+      html += '   <div class="userName">' + this.user.lastName + '</div>'
+    }
+    html += '   <div><p>' + this.txt + '</p></div>'
+    html += '  </div>'
+    html += '</div>'
+    return html
+  },
+
+  getTime: function()
+  {
+    return this.moment.format("HH:mm")
+  }
+}
+
+
+/**
+ *
+ * user class
+ *
+ */
+
+function user(data)
+{
+  this.id = data.id;
+  this.firstName = data.firstName;
+  this.lastName = data.lastName;
+}
+
+user.prototype = {
+
+  getName: function()
+  {
+    return this.firstName + " " + this.lastName;
+  },
+
+  getAvatar: function(size)
+  {
+    return '<img class="img-circle avatar avatar' + this.id + '" src="img/user/' + this.id + '.jpg" width="' + size + '" height="' + size + '" />' 
+  }
+}
+
+
+
+var jsonMessages = [{
+  user_id:2,
+  dateTime : '2016-04-29 14:11:00',
+  txt : 'Quel status ? Forecasted ou proposed'
+},
+{
+  user_id:3,
+  dateTime : '2016-04-29 14:12:00',
+  txt : 'Random c\'est useless !'
+},
+{
+  user_id:1,
+  dateTime : '2016-04-29 14:30:00',
+  txt : 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.<br><br>Proin gravida sem eget est placerat, non iaculis magna sagittis. Vivamus viverra enim mi, eget imperdiet risus feugiat nec. Donec tristique aliquam quam, sit amet blandit ante laoreet et. Sed in lectus diam. Duis et tempus sem.'
+},
+{
+  user_id:1,
+  dateTime : '2016-04-29 14:30:00',
+  txt : 'Lorem ipsum dolor sit ame.'
+},
+{
+  user_id:2,
+  dateTime : '2016-04-29 14:11:00',
+  txt : 'Quel status ? Forecasted ou proposed'
+},
+{
+  user_id:3,
+  dateTime : '2016-04-29 14:12:00',
+  txt : 'Random c\'est useless !'
+},
+{
+  user_id:1,
+  dateTime : '2016-04-29 14:30:00',
+  txt : 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.<br><br>Proin gravida sem eget est placerat, non iaculis magna sagittis. Vivamus viverra enim mi, eget imperdiet risus feugiat nec. Donec tristique aliquam quam, sit amet blandit ante laoreet et. Sed in lectus diam. Duis et tempus sem.'
+},
+{
+  user_id:1,
+  dateTime : '2016-04-29 14:30:00',
+  txt : 'Lorem ipsum dolor sit ame.'
+}]
+
+
+var jsonUsers = [
+  {'id':1,'firstName':'GRANIER','lastName':'Thibaud'},
+  {'id':2,'firstName':'TIMBE','lastName':'Fleury'},
+  {'id':3,'firstName':'AZZABY','lastName':'Kevin'}
+]
+
+
+$(function () {
+    new chat(".chat",jsonMessages,jsonUsers)
+
+    //$(".chat").chat()
+
+});
+
+var delay = (function(){
+  var timer = 0;
+  return function(callback, ms){
+    clearTimeout (timer);
+    timer = setTimeout(callback, ms);
+  };
+})();
+
+
+
+
+
+</script>
+    <script>window.jQuery || document.write('<script src="../../assets/js/vendor/jquery.min.js"><\/script>')</script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+  </body>
+</html>
