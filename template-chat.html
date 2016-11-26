@@ -28,11 +28,6 @@
       </div>
 
       <div class="chat">
-        <div class="messages"></div>
-        <div class="addMessage">
-          <div class="chatInput" contenteditable="true" placeholder="Entrer un message ici"></div>
-          <button id="btnSend" class="btn btn-default" type="button"><span class="glyphicon glyphicon-send" aria-hidden="true"></span></button>
-        </div>
       </div>
 
     </div><!-- /.container -->
@@ -55,9 +50,10 @@
 
 function chat(container,jsonMessages,jsonUsers)
 {
+  this.$container = $(container)
+  this.display()
   this.messages = []
   this.users = {}
-  this.$container = $(container)
   this.$messages = $('.messages');
   this.$input = $('.chatInput');
   this.$btnSend = $('#btnSend');
@@ -70,7 +66,13 @@ function chat(container,jsonMessages,jsonUsers)
 }
 
 chat.prototype = {
-
+  display : function(){
+     this.$container.html('<div class="messages"></div>\
+        <div class="addMessage">\
+          <div class="chatInput" contenteditable="true" placeholder="Entrer un message ici"></div>\
+          <button id="btnSend" class="btn btn-default" type="button"><span class="glyphicon \glyphicon-send" aria-hidden="true"></span></button>\
+        </div>');
+  },
   mapMessages: function()
   {
     var self = this
